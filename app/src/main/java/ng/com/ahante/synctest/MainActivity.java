@@ -1,5 +1,6 @@
 package ng.com.ahante.synctest;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,7 +16,18 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -42,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void submitName(View view){
         String name1 = name.getText().toString();
-        addToLocalDatabase(name1);
+        saveToAppServer(name1);
         name.setText("");
     }
 
@@ -61,16 +73,44 @@ public class MainActivity extends AppCompatActivity {
         dbHelper.close();
     }
 
-    private void addToLocalDatabase(String name){
-        DbHelper dbHelper = new DbHelper(this);
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        if(checkNetworkConnection()){
+    private void saveToAppServer(String name){
 
+        if(checkNetworkConnection()){
+            StringRequest stringRequest = new StringRequest(Request.Method.POST, DbContract.SERVER_URL,
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            try {
+                                JSONObject jsonObject = new JSONObject(response);
+                                String Response = jsonObject.getString("response");
+                                if(Response.equals("OK")){
+                                    saveToLocalStorage(name, DbContract.SYNC_STATUS_OK);
+                                }else{
+                                    saveToLocalStorage(name, DbContract.SYNC_STATUS_FAILED);
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    },
+                    new Response.ErrorListener() {
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            saveToLocalStorage(name, DbContract.SYNC_STATUS_FAILED);
+                        }
+                    }){
+                @Nullable
+                @Override
+                protected Map<String, String> getParams() throws AuthFailureError {
+                    Map<String, String> params = new HashMap<>();
+                    params.put("name", name);
+                    return params;
+                }
+            };
+            MySingleton.getInstance(MainActivity.this).addToRequestQueue(stringRequest);
         }else {
-            dbHelper.saveToLocalDatabase(name, DbContract.SYNC_STATUS_FAILED, db);
+            saveToLocalStorage(name, DbContract.SYNC_STATUS_FAILED);
         }
-        readFromLocalStorage();
-        dbHelper.close();
 
     }
 
@@ -78,6 +118,14 @@ public class MainActivity extends AppCompatActivity {
         ConnectivityManager connectivityManager = (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
         return (networkInfo != null && networkInfo.isConnected());
+    }
+
+    private void saveToLocalStorage(String name, int sync){
+        DbHelper dbHelper = new DbHelper(this);
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        dbHelper.saveToLocalDatabase(name,sync,db);
+        readFromLocalStorage();
+        dbHelper.close();
     }
 
 
