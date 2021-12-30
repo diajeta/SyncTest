@@ -6,7 +6,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -35,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     EditText name;
     RecyclerView.LayoutManager layoutManager;
     ArrayList<Contact> arrayList = new ArrayList<>();
+    BroadcastReceiver broadcastReceiver;
     RecyclerAdapter adapter;
 
     @Override
@@ -50,6 +54,12 @@ public class MainActivity extends AppCompatActivity {
         adapter = new RecyclerAdapter(arrayList);
         recyclerView.setAdapter(adapter);
         readFromLocalStorage();
+        broadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                readFromLocalStorage();
+            }
+        };
     }
 
     public void submitName(View view){
@@ -128,5 +138,15 @@ public class MainActivity extends AppCompatActivity {
         dbHelper.close();
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        registerReceiver(broadcastReceiver, new IntentFilter(DbContract.UI_UPDATE_BROADCAST));
+    }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(broadcastReceiver);
+    }
 }

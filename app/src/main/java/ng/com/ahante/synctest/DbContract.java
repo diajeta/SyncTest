@@ -5,6 +5,7 @@ public class DbContract {
     public static final int SYNC_STATUS_FAILED = 1;
 
     public static final String SERVER_URL = "http://192.168.0.13/syncdemo/syncinfo.php";
+    public static final String UI_UPDATE_BROADCAST = "ng.com.ahante.synctest.uiupdatebroadcast";
     public static final String DATABASE_NAME = "contactdb";
     public static final String TABLE_NAME = "contactinfo";
     public static final String NAME = "name";
